@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client';
 import { extractProductInfo, findAddToCartButton, findBuyNowButton, findPrimeDeliveryButtons } from '@/lib/amazon-selectors';
 import type { ProductInfo } from '@/lib/types';
+import { createSuppressableObserver } from '@/utils/observer';
 import { InterventionOverlay } from './InterventionOverlay';
 
 export default defineContentScript({
@@ -109,17 +110,16 @@ export default defineContentScript({
     // Initial setup
     setupInterception();
 
-    // MutationObserver as backup — re-attach if Amazon re-renders buttons
-    const observer = new MutationObserver(() => {
-      setupInterception();
+    // Debounced observer — re-attach if Amazon re-renders buttons.
+    // Amazon fires hundreds of mutations per second on page load; debouncing
+    // collapses them into one setup call per window.
+    const observer = createSuppressableObserver({
+      callback: () => setupInterception(),
+      debounceMs: 150,
     });
+    observer.observe(document.body);
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
-    // Also observe cart count changes as fallback detection
+    // Cart count observer — not debounced since it fires rarely
     const cartCount = document.querySelector('#nav-cart-count');
     if (cartCount) {
       const cartObserver = new MutationObserver((mutations) => {

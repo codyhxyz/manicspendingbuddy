@@ -1,20 +1,18 @@
 import { useState, useEffect } from 'react';
-import type { AppState, Intervention } from '@/lib/types';
+import type { Intervention } from '@/lib/types';
 import type { AIAvailability } from '@/lib/claude';
+import { sendMessage, type StateResponse } from '@/utils/messaging';
 
 function App() {
-  const [state, setState] = useState<(AppState & { spentToday: number }) | null>(null);
+  const [state, setState] = useState<StateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiStatus, setAiStatus] = useState<AIAvailability>('readily');
 
   useEffect(() => {
-    chrome.runtime.sendMessage({ type: 'GET_STATE' }).then((res: any) => {
-      if (res?.success) setState(res.data);
-      setLoading(false);
-    });
-    chrome.runtime.sendMessage({ type: 'CHECK_AI_STATUS' }).then((res: any) => {
-      if (res?.success) setAiStatus(res.data);
-    });
+    sendMessage('getState', undefined)
+      .then(setState)
+      .finally(() => setLoading(false));
+    sendMessage('checkAIStatus', undefined).then(setAiStatus);
   }, []);
 
   if (loading) return <div className="loading">Loading...</div>;

@@ -38,22 +38,4 @@ export interface AppState {
   settings: AppSettings;
 }
 
-// Messages between content script and service worker
-export type MessageRequest =
-  | {
-      type: 'ANALYZE_PURCHASE';
-      product: ProductInfo;
-      userGoal: string;
-      dailyBudget: number;
-      spentToday: number;
-    }
-  | { type: 'GET_STATE' }
-  | { type: 'LOG_INTERVENTION'; intervention: Intervention }
-  | { type: 'SAVE_FOR_LATER'; item: SavedItem }
-  | { type: 'GET_SETTINGS' }
-  | { type: 'SAVE_SETTINGS'; settings: AppSettings }
-  | { type: 'CHECK_AI_STATUS' };
-
-export type MessageResponse =
-  | { success: true; data: any }
-  | { success: false; error: string };
+// Message types now defined in utils/messaging.ts via @webext-core/messaging

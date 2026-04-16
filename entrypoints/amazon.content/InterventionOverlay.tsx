@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ProductInfo, Intervention, SavedItem } from '@/lib/types';
+import { sendMessage } from '@/utils/messaging';
 
 interface Props {
   product: ProductInfo;
@@ -86,12 +87,9 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
     // Focus the text input when overlay opens
     setTimeout(() => inputRef.current?.focus(), 100);
 
-    // Load budget info
-    chrome.runtime.sendMessage({ type: 'GET_STATE' }).then((res: any) => {
-      if (res?.success) {
-        setDailyBudget(res.data.settings?.dailyBudget ?? 20);
-        setSpentToday(res.data.spentToday ?? 0);
-      }
+    sendMessage('getState', undefined).then((state) => {
+      setDailyBudget(state.settings?.dailyBudget ?? 20);
+      setSpentToday(state.spentToday ?? 0);
     });
   }, []);
 
@@ -102,23 +100,16 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
     setError('');
 
     try {
-      const res: any = await chrome.runtime.sendMessage({
-        type: 'ANALYZE_PURCHASE',
+      const response = await sendMessage('analyzePurchase', {
         product,
         userGoal: userGoal.trim(),
         dailyBudget,
         spentToday,
       });
-
-      if (res?.success) {
-        setClaudeResponse(res.data);
-        setStep('response');
-      } else {
-        setError(res?.error || 'Something went wrong.');
-        setStep('ask');
-      }
+      setClaudeResponse(response);
+      setStep('response');
     } catch (err: any) {
-      setError(err.message || 'Failed to reach Claude.');
+      setError(err.message || 'Something went wrong.');
       setStep('ask');
     }
   };
@@ -133,7 +124,7 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
       decision: 'skipped',
       savedAmount: product.priceNumeric,
     };
-    await chrome.runtime.sendMessage({ type: 'LOG_INTERVENTION', intervention });
+    await sendMessage('logIntervention', intervention);
     onClose();
   };
 
@@ -147,7 +138,7 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
       decision: 'added',
       savedAmount: 0,
     };
-    await chrome.runtime.sendMessage({ type: 'LOG_INTERVENTION', intervention });
+    await sendMessage('logIntervention', intervention);
     onAddAnyway();
   };
 
@@ -168,8 +159,8 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
       decision: 'saved',
       savedAmount: product.priceNumeric,
     };
-    await chrome.runtime.sendMessage({ type: 'SAVE_FOR_LATER', item });
-    await chrome.runtime.sendMessage({ type: 'LOG_INTERVENTION', intervention });
+    await sendMessage('saveForLater', item);
+    await sendMessage('logIntervention', intervention);
     onClose();
   };
 

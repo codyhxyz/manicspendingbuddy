@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { AppSettings } from '@/lib/types';
 import type { AIAvailability } from '@/lib/claude';
+import { sendMessage } from '@/utils/messaging';
 
 function App() {
   const [dailyBudget, setDailyBudget] = useState('20');
@@ -9,25 +9,15 @@ function App() {
   const [aiStatus, setAiStatus] = useState<AIAvailability>('unsupported');
 
   useEffect(() => {
-    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }).then((res: any) => {
-      if (res?.success) {
-        setDailyBudget(String(res.data.dailyBudget || 20));
-      }
-      setLoading(false);
-    });
+    sendMessage('getSettings', undefined)
+      .then((settings) => setDailyBudget(String(settings.dailyBudget || 20)))
+      .finally(() => setLoading(false));
 
-    chrome.runtime.sendMessage({ type: 'CHECK_AI_STATUS' }).then((res: any) => {
-      if (res?.success) {
-        setAiStatus(res.data);
-      }
-    });
+    sendMessage('checkAIStatus', undefined).then(setAiStatus);
   }, []);
 
   const handleSave = async () => {
-    const settings: AppSettings = {
-      dailyBudget: parseFloat(dailyBudget) || 20,
-    };
-    await chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings });
+    await sendMessage('saveSettings', { dailyBudget: parseFloat(dailyBudget) || 20 });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
