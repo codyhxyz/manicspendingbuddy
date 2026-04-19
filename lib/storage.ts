@@ -86,8 +86,11 @@ export async function getTodaySpent(): Promise<number> {
   const state = await getAll();
   const today = new Date().toISOString().slice(0, 10);
   return state.interventions
-    .filter((i) => i.decision === 'added' && i.timestamp > Date.now() - 86400000)
-    .filter((i) => new Date(i.timestamp).toISOString().slice(0, 10) === today)
+    .filter(
+      (i) =>
+        i.decision === 'added' &&
+        new Date(i.timestamp).toISOString().slice(0, 10) === today,
+    )
     .reduce((sum, i) => sum + i.product.priceNumeric, 0);
 }
 

@@ -33,7 +33,13 @@ function renderHoldStrip(holdId: string, title: string, releaseAt: number) {
     await sendMessage('releaseHold', { id: holdId, overrideReason: reason });
     strip.remove();
     const addBtn = findAddToCartButton() ?? findBuyNowButton();
-    if (addBtn) addBtn.click();
+    if (addBtn) {
+      // Tell the MAIN-world fetch hook to let the next cart-add through.
+      // Without this, the hold-skip path has no verdict listener registered
+      // and the intercept falls back to the 60s safety timeout.
+      window.postMessage({ __msb: 'bypass-next', ms: 3000 }, window.location.origin);
+      addBtn.click();
+    }
   });
 }
 
@@ -105,7 +111,16 @@ export default defineContentScript({
       }
 
       function showOverlayForNetwork(product: ProductInfo, requestId: string) {
-        if (overlayRoot) return; // an overlay from the click path is already handling this
+        if (overlayRoot) {
+          // DOM-click overlay is already handling this interaction; deny the
+          // orphan fetch so the MAIN-world hook aborts it immediately instead
+          // of waiting 60s for the safety timeout to auto-approve.
+          window.postMessage(
+            { __msb: 'verdict', id: requestId, verdict: 'deny' },
+            window.location.origin,
+          );
+          return;
+        }
         overlayRoot = document.createElement('div');
         overlayRoot.id = 'msb-overlay-root';
         document.body.appendChild(overlayRoot);
@@ -130,8 +145,9 @@ export default defineContentScript({
         if (!data || data.__msb !== 'intercept' || !data.id) return;
 
         const product = extractProductInfo();
-        if (!product.title) {
-          // Can't extract — let the request through rather than break Amazon.
+        if (!product.title || product.priceNumeric <= 0) {
+          // Can't extract reliably — let the request through rather than
+          // break Amazon (and avoid logging bogus $0 interventions).
           window.postMessage(
             { __msb: 'verdict', id: data.id, verdict: 'approve' },
             window.location.origin,
@@ -152,8 +168,8 @@ export default defineContentScript({
             e.stopImmediatePropagation();
 
             const product = extractProductInfo();
-            if (!product.title) {
-              console.warn('[MSB] Could not extract product info, letting click through');
+            if (!product.title || product.priceNumeric <= 0) {
+              console.warn('[MSB] Could not extract product info reliably, letting click through');
               intercepted = true;
               btn.click();
               setTimeout(() => { intercepted = false; }, 500);
@@ -203,19 +219,6 @@ export default defineContentScript({
         debounceMs: 150,
       });
       observer.observe(document.body);
-
-      // Cart count observer — not debounced since it fires rarely
-      const cartCount = document.querySelector('#nav-cart-count');
-      if (cartCount) {
-        const cartObserver = new MutationObserver((mutations) => {
-          for (const m of mutations) {
-            if (m.type === 'characterData' || m.type === 'childList') {
-              console.log('[MSB] Cart count changed — item may have been added outside interception');
-            }
-          }
-        });
-        cartObserver.observe(cartCount, { characterData: true, childList: true, subtree: true });
-      }
     }
   },
 });

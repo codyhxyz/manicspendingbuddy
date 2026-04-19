@@ -111,9 +111,9 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
       });
       setClaudeResponse(response);
       setStep('response');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('[MSB] analyzePurchase failed, degrading', err);
-      setError(err?.message || 'Something went wrong.');
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
       setStep('degraded');
     }
   };

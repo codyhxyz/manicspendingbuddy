@@ -105,7 +105,9 @@ export default defineContentScript({
           })),
           observation: '',
           cartTotalBefore,
-          savedAmount,
+          // Per-item logIntervention calls above already added to totalSaved.
+          // Pass 0 here so storage.logCartReview doesn't double-count.
+          savedAmount: 0,
           decision: removedAsins.length === items.length ? 'emptied' : 'modified',
         });
         unmount();

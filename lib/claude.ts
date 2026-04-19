@@ -1,6 +1,6 @@
 import type { ProductInfo } from './types';
 import { getInstallId } from './install-id';
-import { chatCompletion, ProxyError } from './proxy';
+import { chatCompletion, ProxyError, PROXY_BASE } from './proxy';
 import {
   CART_REVIEW_SYSTEM_PROMPT,
   type CartReviewRequest,
@@ -43,10 +43,23 @@ export interface AnalyzeRequest {
 export type AIAvailability = 'ready' | 'error';
 
 export async function checkAIAvailability(): Promise<AIAvailability> {
-  // The extension never sees the provider key. A "ready" status reflects the
-  // extension's ability to call the proxy; actual reachability surfaces as
-  // errors during real use.
-  return 'ready';
+  // Probe the proxy with a cheap OPTIONS preflight — 204 means CORS is live
+  // and the host permission has been granted. Any network/CORS failure here
+  // is what the popup surfaces as "Buddy's offline". Real call errors still
+  // bubble up separately during interventions.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2500);
+  try {
+    const res = await fetch(`${PROXY_BASE}/v1/analyze`, {
+      method: 'OPTIONS',
+      signal: controller.signal,
+    });
+    return res.status === 204 || res.ok ? 'ready' : 'error';
+  } catch {
+    return 'error';
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function analyzePurchase(req: AnalyzeRequest): Promise<string> {

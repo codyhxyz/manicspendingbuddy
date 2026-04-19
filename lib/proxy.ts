@@ -5,7 +5,7 @@
 const DEFAULT_TIMEOUT_MS = 12_000;
 
 // Baked at build time from WXT_PROXY_URL in .env. Fallback is the local dev URL.
-const PROXY_BASE: string =
+export const PROXY_BASE: string =
   (import.meta.env.WXT_PROXY_URL as string | undefined) ??
   'http://localhost:8787';
 
