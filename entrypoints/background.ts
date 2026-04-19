@@ -20,6 +20,19 @@ import { onMessage } from '@/utils/messaging';
 export default defineBackground(() => {
   console.log('[MSB] Service worker started');
 
+  // Open the welcome tab on first install so the user can grant host access
+  // from a button click. chrome.permissions.request() requires a user gesture,
+  // which an onInstalled handler alone can't provide — the welcome page is
+  // where that click lives.
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason !== 'install') return;
+    void chrome.storage.local.get('welcomeShown').then(({ welcomeShown }) => {
+      if (welcomeShown) return;
+      void chrome.storage.local.set({ welcomeShown: true });
+      chrome.tabs.create({ url: chrome.runtime.getURL('/welcome.html') });
+    });
+  });
+
   onMessage('analyzePurchase', ({ data }) => analyzePurchase(data));
   onMessage('reviewCart', ({ data }) => reviewCart(data));
 
