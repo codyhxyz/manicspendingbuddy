@@ -5,17 +5,15 @@ import { sendMessage } from '@/utils/messaging';
 function App() {
   const [dailyBudget, setDailyBudget] = useState('20');
   const [holdModeEnabled, setHoldModeEnabled] = useState(false);
-  const [minimaxApiKey, setMinimaxApiKey] = useState('');
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [aiStatus, setAiStatus] = useState<AIAvailability>('no-key');
+  const [aiStatus, setAiStatus] = useState<AIAvailability>('ready');
 
   useEffect(() => {
     sendMessage('getSettings', undefined)
       .then((settings) => {
         setDailyBudget(String(settings.dailyBudget || 20));
         setHoldModeEnabled(settings.holdModeEnabled ?? false);
-        setMinimaxApiKey(settings.minimaxApiKey ?? '');
       })
       .finally(() => setLoading(false));
 
@@ -26,10 +24,7 @@ function App() {
     await sendMessage('saveSettings', {
       dailyBudget: parseFloat(dailyBudget) || 20,
       holdModeEnabled,
-      minimaxApiKey: minimaxApiKey.trim(),
     });
-    const fresh = await sendMessage('checkAIStatus', undefined);
-    setAiStatus(fresh);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -42,26 +37,10 @@ function App() {
       <p className="subtitle">Settings</p>
 
       <div className="field">
-        <label htmlFor="apiKey">MiniMax API Key</label>
-        <input
-          id="apiKey"
-          type="password"
-          autoComplete="off"
-          placeholder="sk-..."
-          value={minimaxApiKey}
-          onChange={(e) => setMinimaxApiKey(e.target.value)}
-        />
-        <p className="hint">
-          Get one at{' '}
-          <a href="https://platform.minimax.io/" target="_blank" rel="noreferrer">
-            platform.minimax.io
-          </a>
-          . Stored locally on this device only.
-        </p>
+        <label>Buddy status</label>
         <div className={`ai-status ai-status-${aiStatus}`}>
-          {aiStatus === 'ready' && 'Ready — MiniMax M2.7 reachable with your key'}
-          {aiStatus === 'no-key' && 'No API key set — paste one above and save'}
-          {aiStatus === 'error' && 'Key rejected or network unreachable. Check the key and try again.'}
+          {aiStatus === 'ready' && 'Ready'}
+          {aiStatus === 'error' && 'Unreachable right now — we\'ll retry automatically.'}
         </div>
       </div>
 

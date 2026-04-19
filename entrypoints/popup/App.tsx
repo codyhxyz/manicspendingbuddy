@@ -34,10 +34,7 @@ function App() {
 
       {aiUnavailable && (
         <div className="warning">
-          {aiStatus === 'no-key' ? 'Add your MiniMax API key' : 'MiniMax unreachable'}{' '}
-          <a href="#" onClick={() => chrome.runtime.openOptionsPage()}>
-            Open Options
-          </a>
+          Buddy's offline right now — we'll retry automatically.
         </div>
       )}
 

@@ -9,7 +9,10 @@ export default defineConfig({
     permissions: ['activeTab', 'storage', 'alarms', 'notifications'],
     host_permissions: [
       'https://www.amazon.com/*',
-      'https://api.minimax.io/*',
+      // The proxy URL is baked from WXT_PROXY_URL at build time; this wildcard
+      // covers *.workers.dev until we pin a specific subdomain or move to
+      // msb.codyh.xyz. Narrow to the exact hostname before CWS submission.
+      'https://*.workers.dev/*',
     ],
   },
   autoIcons: {

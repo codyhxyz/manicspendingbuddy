@@ -3,7 +3,6 @@ import type { AppSettings, AppState, CartReview, Intervention, SavedItem } from 
 const DEFAULT_SETTINGS: AppSettings = {
   dailyBudget: 20,
   holdModeEnabled: false,
-  minimaxApiKey: '',
 };
 
 const DEFAULT_STATE: AppState = {

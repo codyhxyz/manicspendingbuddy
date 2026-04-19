@@ -1,6 +1,6 @@
 import type { ProductInfo } from './types';
-import { getSettings } from './storage';
-import { chatCompletion, MiniMaxError } from './minimax';
+import { getInstallId } from './install-id';
+import { chatCompletion, ProxyError } from './proxy';
 import {
   CART_REVIEW_SYSTEM_PROMPT,
   type CartReviewRequest,
@@ -40,20 +40,17 @@ export interface AnalyzeRequest {
   spentToday: number;
 }
 
-export type AIAvailability = 'ready' | 'no-key' | 'error';
+export type AIAvailability = 'ready' | 'error';
 
 export async function checkAIAvailability(): Promise<AIAvailability> {
-  const settings = await getSettings();
-  if (!settings.minimaxApiKey) return 'no-key';
+  // The extension never sees the provider key. A "ready" status reflects the
+  // extension's ability to call the proxy; actual reachability surfaces as
+  // errors during real use.
   return 'ready';
 }
 
 export async function analyzePurchase(req: AnalyzeRequest): Promise<string> {
-  const settings = await getSettings();
-  if (!settings.minimaxApiKey) {
-    throw new Error('No MiniMax API key set. Open Options to add one.');
-  }
-
+  const installId = await getInstallId();
   const { product, userGoal, dailyBudget, spentToday } = req;
   const budgetRemaining = Math.max(0, dailyBudget - spentToday);
   const overBudget = product.priceNumeric > budgetRemaining;
@@ -71,15 +68,16 @@ My goal for this purchase: ${userGoal}`;
 
   try {
     return await chatCompletion({
-      apiKey: settings.minimaxApiKey,
+      installId,
       systemPrompt: SYSTEM_PROMPT,
       userMessage,
       maxTokens: 400,
       temperature: 0.7,
-      timeoutMs: 10_000,
+      timeoutMs: 12_000,
+      endpoint: 'analyze',
     });
   } catch (err) {
-    if (err instanceof MiniMaxError) {
+    if (err instanceof ProxyError) {
       throw new Error(friendlyMessage(err));
     }
     throw err;
@@ -89,22 +87,21 @@ My goal for this purchase: ${userGoal}`;
 const CART_REVIEW_TIMEOUT_MS = 15_000;
 
 export async function reviewCart(req: CartReviewRequest): Promise<ParsedCartReview> {
-  const settings = await getSettings();
-  if (!settings.minimaxApiKey) throw new Error('AI_UNAVAILABLE');
-
+  const installId = await getInstallId();
   const userMessage = buildCartReviewUserMessage(req);
   let raw: string;
   try {
     raw = await chatCompletion({
-      apiKey: settings.minimaxApiKey,
+      installId,
       systemPrompt: CART_REVIEW_SYSTEM_PROMPT,
       userMessage,
       maxTokens: 800,
       temperature: 0.5,
       timeoutMs: CART_REVIEW_TIMEOUT_MS,
+      endpoint: 'cart-review',
     });
   } catch (err) {
-    if (err instanceof MiniMaxError) throw new Error('AI_UNAVAILABLE');
+    if (err instanceof ProxyError) throw new Error('AI_UNAVAILABLE');
     throw err;
   }
 
@@ -112,22 +109,24 @@ export async function reviewCart(req: CartReviewRequest): Promise<ParsedCartRevi
     return parseCartReviewResponse(raw);
   } catch {
     const retry = await chatCompletion({
-      apiKey: settings.minimaxApiKey,
+      installId,
       systemPrompt: CART_REVIEW_SYSTEM_PROMPT,
       userMessage: userMessage + '\n\nReturn ONLY the JSON, no prose, no markdown fence.',
       maxTokens: 800,
       temperature: 0.3,
       timeoutMs: CART_REVIEW_TIMEOUT_MS,
+      endpoint: 'cart-review',
     });
     return parseCartReviewResponse(retry);
   }
 }
 
-function friendlyMessage(err: MiniMaxError): string {
+function friendlyMessage(err: ProxyError): string {
   switch (err.code) {
-    case 'no-key': return 'MiniMax API key missing. Open Options to add one.';
-    case 'timeout': return 'MiniMax took too long to respond.';
-    case 'http': return `MiniMax rejected the request: ${err.message}`;
-    case 'parse': return 'MiniMax returned an unexpected response shape.';
+    case 'install-id': return 'Buddy can\'t identify this install — try reloading the extension.';
+    case 'rate-limit': return 'You\'ve hit today\'s free limit. Resets at midnight.';
+    case 'timeout': return 'Buddy took too long to respond.';
+    case 'http': return 'Buddy is having a rough moment — try again in a sec.';
+    case 'parse': return 'Buddy returned a weird response. Try again.';
   }
 }

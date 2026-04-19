@@ -48,7 +48,6 @@ export interface CartReview {
 export interface AppSettings {
   dailyBudget: number;
   holdModeEnabled: boolean;
-  minimaxApiKey: string;
 }
 
 export interface AppState {
