@@ -1,0 +1,20 @@
+name = "msb-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+
+# KV namespace for per-install day-bucketed rate counters.
+# Create with: wrangler kv:namespace create RATE_LIMITS
+# then paste the returned id below.
+[[kv_namespaces]]
+binding = "RATE_LIMITS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+# Daily free-tier limits per install. Raise these once we have real traffic data.
+ANALYZE_LIMIT_PER_DAY = "30"
+CART_REVIEW_LIMIT_PER_DAY = "10"
+# MiniMax model id. Swap in prod if the vendor rolls a newer version.
+MINIMAX_MODEL = "MiniMax-M2.7"
+
+# Secrets (set with wrangler secret put, NEVER put in this file):
+#   MINIMAX_API_KEY  — the real provider key the extension must never see
