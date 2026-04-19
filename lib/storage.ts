@@ -1,7 +1,9 @@
-import type { AppSettings, AppState, Intervention, SavedItem } from './types';
+import type { AppSettings, AppState, CartReview, Intervention, SavedItem } from './types';
 
 const DEFAULT_SETTINGS: AppSettings = {
   dailyBudget: 20,
+  holdModeEnabled: false,
+  minimaxApiKey: '',
 };
 
 const DEFAULT_STATE: AppState = {
@@ -10,12 +12,20 @@ const DEFAULT_STATE: AppState = {
   lastSkipDate: '',
   interventions: [],
   savedForLater: [],
+  cartReviews: [],
   settings: DEFAULT_SETTINGS,
 };
 
 async function getAll(): Promise<AppState> {
   const result = await chrome.storage.local.get('appState');
-  return { ...DEFAULT_STATE, ...(result.appState as Partial<AppState>) };
+  const merged: AppState = { ...DEFAULT_STATE, ...(result.appState as Partial<AppState>) };
+  merged.settings = { ...DEFAULT_SETTINGS, ...(merged.settings ?? {}) };
+  merged.savedForLater = (merged.savedForLater ?? []).map((item) => ({
+    ...item,
+    kind: item.kind ?? 'wishlist',
+  }));
+  merged.cartReviews = merged.cartReviews ?? [];
+  return merged;
 }
 
 async function saveAll(state: AppState): Promise<void> {
@@ -87,4 +97,12 @@ function isYesterday(dateStr: string): boolean {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   return dateStr === yesterday.toISOString().slice(0, 10);
+}
+
+export async function logCartReview(review: CartReview): Promise<void> {
+  const state = await getAll();
+  state.cartReviews.unshift(review);
+  if (state.cartReviews.length > 50) state.cartReviews = state.cartReviews.slice(0, 50);
+  state.totalSaved += review.savedAmount;
+  await saveAll(state);
 }

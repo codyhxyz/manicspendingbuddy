@@ -3,10 +3,15 @@ import type { Intervention } from '@/lib/types';
 import type { AIAvailability } from '@/lib/claude';
 import { sendMessage, type StateResponse } from '@/utils/messaging';
 
+function hoursLeft(releaseAt?: number): number {
+  if (!releaseAt) return 0;
+  return Math.max(0, Math.ceil((releaseAt - Date.now()) / (60 * 60 * 1000)));
+}
+
 function App() {
   const [state, setState] = useState<StateResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [aiStatus, setAiStatus] = useState<AIAvailability>('readily');
+  const [aiStatus, setAiStatus] = useState<AIAvailability>('ready');
 
   useEffect(() => {
     sendMessage('getState', undefined)
@@ -18,7 +23,7 @@ function App() {
   if (loading) return <div className="loading">Loading...</div>;
   if (!state) return <div className="error">Could not load data.</div>;
 
-  const aiUnavailable = aiStatus === 'no' || aiStatus === 'unsupported';
+  const aiUnavailable = aiStatus !== 'ready';
   const recentInterventions = state.interventions.slice(0, 5);
 
   return (
@@ -29,9 +34,9 @@ function App() {
 
       {aiUnavailable && (
         <div className="warning">
-          Chrome AI not available.{' '}
+          {aiStatus === 'no-key' ? 'Add your MiniMax API key' : 'MiniMax unreachable'}{' '}
           <a href="#" onClick={() => chrome.runtime.openOptionsPage()}>
-            Check Options
+            Open Options
           </a>
         </div>
       )}
@@ -55,17 +60,55 @@ function App() {
         </div>
       </div>
 
-      {state.savedForLater.length > 0 && (
-        <section className="section">
-          <h2>Saved for Later ({state.savedForLater.length})</h2>
-          {state.savedForLater.slice(0, 3).map((item) => (
-            <div key={item.id} className="saved-item">
-              <span className="saved-title">{item.product.title.slice(0, 50)}...</span>
-              <span className="saved-price">{item.product.price}</span>
-            </div>
-          ))}
-        </section>
-      )}
+      {(() => {
+        const active = state.savedForLater.filter(
+          (i) => i.kind === 'hold' && i.releaseAt && i.releaseAt > Date.now(),
+        );
+        if (active.length === 0) return null;
+        return (
+          <section className="section">
+            <h2>On ice ({active.length})</h2>
+            {active.map((item) => (
+              <div key={item.id} className="on-ice-item">
+                <div className="on-ice-title">{item.product.title.slice(0, 50)}</div>
+                <div className="on-ice-meta">
+                  <span>{item.product.price}</span>
+                  <span>·</span>
+                  <span>{hoursLeft(item.releaseAt)}h left</span>
+                  <button
+                    className="on-ice-release"
+                    onClick={async () => {
+                      const reason = window.prompt('Why the emergency? (logged for your own reflection)');
+                      if (reason === null) return;
+                      await sendMessage('releaseHold', { id: item.id, overrideReason: reason });
+                      const fresh = await sendMessage('getState', undefined);
+                      setState(fresh);
+                    }}
+                  >
+                    Release
+                  </button>
+                </div>
+              </div>
+            ))}
+          </section>
+        );
+      })()}
+
+      {(() => {
+        const wishlist = state.savedForLater.filter((i) => i.kind !== 'hold');
+        if (wishlist.length === 0) return null;
+        return (
+          <section className="section">
+            <h2>Saved for Later ({wishlist.length})</h2>
+            {wishlist.slice(0, 3).map((item) => (
+              <div key={item.id} className="saved-item">
+                <span className="saved-title">{item.product.title.slice(0, 50)}...</span>
+                <span className="saved-price">{item.product.price}</span>
+              </div>
+            ))}
+          </section>
+        );
+      })()}
 
       {recentInterventions.length > 0 && (
         <section className="section">

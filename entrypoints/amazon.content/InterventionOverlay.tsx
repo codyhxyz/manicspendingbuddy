@@ -75,12 +75,14 @@ function BuddyIcon() {
 }
 
 export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
-  const [step, setStep] = useState<'ask' | 'thinking' | 'response'>('ask');
+  const [step, setStep] = useState<'ask' | 'thinking' | 'response' | 'degraded'>('ask');
   const [userGoal, setUserGoal] = useState('');
   const [claudeResponse, setClaudeResponse] = useState('');
   const [error, setError] = useState('');
   const [dailyBudget, setDailyBudget] = useState(20);
   const [spentToday, setSpentToday] = useState(0);
+  const [holdModeEnabled, setHoldModeEnabled] = useState(false);
+  const [heldConfirmation, setHeldConfirmation] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -90,6 +92,7 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
     sendMessage('getState', undefined).then((state) => {
       setDailyBudget(state.settings?.dailyBudget ?? 20);
       setSpentToday(state.spentToday ?? 0);
+      setHoldModeEnabled(state.settings?.holdModeEnabled ?? false);
     });
   }, []);
 
@@ -109,8 +112,9 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
       setClaudeResponse(response);
       setStep('response');
     } catch (err: any) {
-      setError(err.message || 'Something went wrong.');
-      setStep('ask');
+      console.warn('[MSB] analyzePurchase failed, degrading', err);
+      setError(err?.message || 'Something went wrong.');
+      setStep('degraded');
     }
   };
 
@@ -129,6 +133,25 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
   };
 
   const handleAddAnyway = async () => {
+    if (holdModeEnabled) {
+      await sendMessage('createHold', {
+        product,
+        userGoal,
+      });
+      const intervention: Intervention = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        product,
+        userGoal,
+        claudeResponse,
+        decision: 'held',
+        savedAmount: 0,
+      };
+      await sendMessage('logIntervention', intervention);
+      setHeldConfirmation(true);
+      return;
+    }
+
     const intervention: Intervention = {
       id: crypto.randomUUID(),
       timestamp: Date.now(),
@@ -145,6 +168,7 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
   const handleSaveForLater = async () => {
     const item: SavedItem = {
       id: crypto.randomUUID(),
+      kind: 'wishlist',
       product,
       userGoal,
       savedAt: Date.now(),
@@ -176,6 +200,27 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
 
   const budgetRemaining = Math.max(0, dailyBudget - spentToday);
   const overBudget = product.priceNumeric > budgetRemaining;
+
+  if (heldConfirmation) {
+    return (
+      <>
+        <style>{overlayStyles}</style>
+        <div className="msb-backdrop" onClick={onClose} />
+        <div className="msb-overlay">
+          <div className="msb-response-section" style={{ textAlign: 'center', padding: '28px 20px' }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>⏳</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#2a1f0a', marginBottom: 8 }}>
+              OK — 48h hold.
+            </div>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+              I'll ping you when it's time. Most of these don't survive the wait — that's the feature working.
+            </div>
+            <button className="msb-submit-btn" onClick={onClose}>Got it</button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -217,7 +262,6 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
               onKeyDown={handleKeyDown}
               rows={2}
             />
-            {error && <div className="msb-error">{error}</div>}
             <button
               className="msb-submit-btn"
               onClick={handleSubmit}
@@ -233,6 +277,27 @@ export function InterventionOverlay({ product, onClose, onAddAnyway }: Props) {
           <div className="msb-thinking">
             <div className="msb-spinner" />
             <span>Thinking about this...</span>
+          </div>
+        )}
+
+        {/* AI failed — give user the decision themselves */}
+        {step === 'degraded' && (
+          <div className="msb-response-section">
+            <div className="msb-degraded-note">
+              Buddy's offline — you decide this one.{' '}
+              {error ? <span className="msb-degraded-reason">({error})</span> : null}
+            </div>
+            <div className="msb-actions">
+              <button className="msb-btn msb-btn-skip" onClick={handleSkip}>
+                Skip it — save {product.price}
+              </button>
+              <button className="msb-btn msb-btn-save" onClick={handleSaveForLater}>
+                Save for later
+              </button>
+              <button className="msb-btn msb-btn-add" onClick={handleAddAnyway}>
+                Add anyway
+              </button>
+            </div>
           </div>
         )}
 
@@ -580,5 +645,21 @@ const overlayStyles = `
   .msb-btn-add:hover {
     background: #eee;
     color: #666;
+  }
+
+  .msb-degraded-note {
+    font-size: 13px;
+    color: #6b6357;
+    padding: 14px 16px;
+    background: #fffaf0;
+    border: 1px solid #f0e8dd;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .msb-degraded-reason {
+    color: #a38b4a;
+    font-size: 12px;
   }
 `;

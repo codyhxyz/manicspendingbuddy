@@ -8,3 +8,36 @@ body {
   margin: 0;
   min-width: 340px;
 }
+
+.on-ice-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0e8dd;
+}
+.on-ice-item:last-child { border-bottom: none; }
+.on-ice-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2a1f0a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.on-ice-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 11px;
+  color: #666;
+}
+.on-ice-release {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  color: #888;
+  cursor: pointer;
+}
+.on-ice-release:hover { border-color: #aaa; color: #555; }

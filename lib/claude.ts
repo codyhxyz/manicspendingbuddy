@@ -1,5 +1,13 @@
-/// <reference path="./chrome-ai.d.ts" />
 import type { ProductInfo } from './types';
+import { getSettings } from './storage';
+import { chatCompletion, MiniMaxError } from './minimax';
+import {
+  CART_REVIEW_SYSTEM_PROMPT,
+  type CartReviewRequest,
+  type ParsedCartReview,
+  buildCartReviewUserMessage,
+  parseCartReviewResponse,
+} from './cart-review-prompt';
 
 const SYSTEM_PROMPT = `You are the Manic Spending Buddy — a warm, curious friend who's great with money. Not a gatekeeper or guilt machine. You genuinely help users get what they need, ideally for free or cheap.
 
@@ -32,35 +40,21 @@ export interface AnalyzeRequest {
   spentToday: number;
 }
 
-export type AIAvailability = 'readily' | 'after-download' | 'no' | 'unsupported';
+export type AIAvailability = 'ready' | 'no-key' | 'error';
 
 export async function checkAIAvailability(): Promise<AIAvailability> {
-  if (typeof ai === 'undefined' || !ai?.languageModel) {
-    return 'unsupported';
-  }
-  const caps = await ai.languageModel.capabilities();
-  return caps.available;
+  const settings = await getSettings();
+  if (!settings.minimaxApiKey) return 'no-key';
+  return 'ready';
 }
 
-export async function analyzePurchase(
-  req: AnalyzeRequest,
-): Promise<string> {
+export async function analyzePurchase(req: AnalyzeRequest): Promise<string> {
+  const settings = await getSettings();
+  if (!settings.minimaxApiKey) {
+    throw new Error('No MiniMax API key set. Open Options to add one.');
+  }
+
   const { product, userGoal, dailyBudget, spentToday } = req;
-
-  const availability = await checkAIAvailability();
-
-  if (availability === 'unsupported') {
-    throw new Error(
-      'Chrome\'s built-in AI is not available in this browser. Make sure you\'re using a recent version of Google Chrome.',
-    );
-  }
-
-  if (availability === 'no') {
-    throw new Error(
-      'Chrome\'s AI model is not available on this device. Try restarting Chrome — the model may still be downloading.',
-    );
-  }
-
   const budgetRemaining = Math.max(0, dailyBudget - spentToday);
   const overBudget = product.priceNumeric > budgetRemaining;
 
@@ -75,14 +69,65 @@ Budget context:
 
 My goal for this purchase: ${userGoal}`;
 
-  const session = await ai.languageModel.create({
-    systemPrompt: SYSTEM_PROMPT,
-  });
+  try {
+    return await chatCompletion({
+      apiKey: settings.minimaxApiKey,
+      systemPrompt: SYSTEM_PROMPT,
+      userMessage,
+      maxTokens: 400,
+      temperature: 0.7,
+      timeoutMs: 10_000,
+    });
+  } catch (err) {
+    if (err instanceof MiniMaxError) {
+      throw new Error(friendlyMessage(err));
+    }
+    throw err;
+  }
+}
+
+const CART_REVIEW_TIMEOUT_MS = 15_000;
+
+export async function reviewCart(req: CartReviewRequest): Promise<ParsedCartReview> {
+  const settings = await getSettings();
+  if (!settings.minimaxApiKey) throw new Error('AI_UNAVAILABLE');
+
+  const userMessage = buildCartReviewUserMessage(req);
+  let raw: string;
+  try {
+    raw = await chatCompletion({
+      apiKey: settings.minimaxApiKey,
+      systemPrompt: CART_REVIEW_SYSTEM_PROMPT,
+      userMessage,
+      maxTokens: 800,
+      temperature: 0.5,
+      timeoutMs: CART_REVIEW_TIMEOUT_MS,
+    });
+  } catch (err) {
+    if (err instanceof MiniMaxError) throw new Error('AI_UNAVAILABLE');
+    throw err;
+  }
 
   try {
-    const response = await session.prompt(userMessage);
-    return response || 'No response from AI.';
-  } finally {
-    session.destroy();
+    return parseCartReviewResponse(raw);
+  } catch {
+    const retry = await chatCompletion({
+      apiKey: settings.minimaxApiKey,
+      systemPrompt: CART_REVIEW_SYSTEM_PROMPT,
+      userMessage: userMessage + '\n\nReturn ONLY the JSON, no prose, no markdown fence.',
+      maxTokens: 800,
+      temperature: 0.3,
+      timeoutMs: CART_REVIEW_TIMEOUT_MS,
+    });
+    return parseCartReviewResponse(retry);
+  }
+}
+
+function friendlyMessage(err: MiniMaxError): string {
+  switch (err.code) {
+    case 'no-key': return 'MiniMax API key missing. Open Options to add one.';
+    case 'timeout': return 'MiniMax took too long to respond.';
+    case 'http': return `MiniMax rejected the request: ${err.message}`;
+    case 'parse': return 'MiniMax returned an unexpected response shape.';
   }
 }
