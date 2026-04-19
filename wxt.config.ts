@@ -1,14 +1,24 @@
 import { defineConfig } from 'wxt';
 
-// Proxy origin for optional_host_permissions. Read from WXT_PROXY_URL at
-// config-load time so the manifest host list exactly matches whatever the
-// welcome page asks users to grant. Falls back to wrangler dev's default port.
+// Load .env into process.env before WXT reads the manifest config. WXT's Vite
+// pipeline auto-loads .env for bundled code (import.meta.env), but not for
+// this config file. Node 20.6+ exposes loadEnvFile; we try/catch so older
+// runtimes still work with whatever process.env already holds.
+try {
+  (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.('.env');
+} catch {
+  /* .env not present — fall back to process.env defaults below */
+}
+
+// Proxy origin for optional_host_permissions. Must match the WXT_PROXY_URL
+// baked into lib/proxy.ts so the welcome page asks for exactly the origin the
+// extension will hit. Fallback = the deployed production URL.
 function proxyOriginPattern(): string {
-  const raw = process.env.WXT_PROXY_URL ?? 'http://localhost:8787';
+  const raw = process.env.WXT_PROXY_URL ?? 'https://manicspendingbuddy.codyh.xyz';
   try {
     return new URL(raw).origin + '/*';
   } catch {
-    return 'http://localhost:8787/*';
+    return 'https://manicspendingbuddy.codyh.xyz/*';
   }
 }
 
