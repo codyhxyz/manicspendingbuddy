@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Simple Krumm: blob body, two arms up, eyeballs on top. Minimal. -->
+
+  <!-- Body: simple rounded blob -->
+  <ellipse cx="64" cy="88" rx="28" ry="30" fill="#4CAF50"/>
+
+  <!-- Left arm -->
+  <line x1="42" y1="72" x2="30" y2="36" stroke="#4CAF50" stroke-width="6" stroke-linecap="round"/>
+  <!-- Right arm -->
+  <line x1="86" y1="72" x2="98" y2="36" stroke="#4CAF50" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Left eyeball -->
+  <circle cx="30" cy="28" r="12" fill="white" stroke="#333" stroke-width="1.5"/>
+  <circle cx="32" cy="27" r="5" fill="#333"/>
+  <circle cx="34" cy="25" r="1.5" fill="white"/>
+
+  <!-- Right eyeball -->
+  <circle cx="98" cy="28" r="12" fill="white" stroke="#333" stroke-width="1.5"/>
+  <circle cx="96" cy="27" r="5" fill="#333"/>
+  <circle cx="94" cy="25" r="1.5" fill="white"/>
+
+  <!-- Mouth: simple wide grin -->
+  <path d="M50 94 Q64 106 78 94" stroke="#2E7D32" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+</svg>

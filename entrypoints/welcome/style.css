@@ -1,0 +1,293 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fffbf5;
+  --surface: #fff;
+  --border: #f0e8dd;
+  --text: #2a1f0a;
+  --muted: #6b6357;
+  --accent: #8b6914;
+  --accent-hover: #725610;
+  --success-bg: #e8f5e9;
+  --success-border: #a8d8ac;
+  --success-text: #1b5e20;
+  --warn: #c2410c;
+  --error: #b91c1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1510;
+    --surface: #241d14;
+    --border: #3a3024;
+    --text: #f5ecd9;
+    --muted: #b5a98b;
+    --accent: #d4a94a;
+    --accent-hover: #e6bd5e;
+    --success-bg: #183c1d;
+    --success-border: #2a6330;
+    --success-text: #a8d8ac;
+    --warn: #f59e0b;
+    --error: #f87171;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+}
+
+.welcome {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+}
+
+.welcome-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.welcome-buddy {
+  display: inline-block;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.welcome-header h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.welcome-value {
+  margin: 0 auto;
+  max-width: 420px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.welcome-surfaces {
+  margin-bottom: 28px;
+}
+
+.welcome-surfaces h2 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.welcome-surfaces ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.welcome-surfaces li {
+  padding: 4px 0 4px 16px;
+  position: relative;
+}
+
+.welcome-surfaces li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.welcome-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.welcome-step {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.welcome-step-granted {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+}
+
+.welcome-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.welcome-step-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.welcome-step-justification {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.welcome-step-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.welcome-step-btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.welcome-step-btn:hover {
+  background: var(--accent-hover);
+}
+
+.welcome-step-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.welcome-step-privacy {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.welcome-step-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.welcome-step-hint-warn {
+  color: var(--warn);
+}
+
+.welcome-step-hint-error {
+  color: var(--error);
+}
+
+.welcome-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.welcome-icon-granted {
+  color: var(--success-text);
+}
+
+.welcome-icon-pending {
+  color: var(--muted);
+  animation: welcome-spin 0.8s linear infinite;
+}
+
+.welcome-icon-idle {
+  color: var(--muted);
+}
+
+@keyframes welcome-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.welcome-all-set {
+  padding: 16px;
+  border: 1px solid var(--success-border);
+  background: var(--success-bg);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.welcome-all-set p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--success-text);
+  font-weight: 600;
+}
+
+.welcome-pin-hint {
+  margin-top: 8px !important;
+  font-weight: 400 !important;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.welcome-puzzle {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--success-text);
+}
+
+.welcome-footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.welcome-footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.welcome-footer a:hover {
+  text-decoration: underline;
+  color: var(--text);
+}
+
+.welcome-footer code {
+  font-size: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.welcome-footer-spacer {
+  margin-left: auto;
+}
