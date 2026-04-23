@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.log
+
+# Local superpowers brainstorming scratch — remove if you want this tracked
+.superpowers/
+
+.vscode/*
+!.vscode/extensions.json
+.idea
