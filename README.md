@@ -1,45 +1,48 @@
-# Manic Spending Buddy
+# manic spending buddy
 
-A curious AI buddy that lives in your browser and asks "what's the goal?" before you add things to your Amazon cart. Not a blocker, not a guilt machine — a friend who's good with money. Built for ADHD brains that bounce off timers, blockers, and friction walls.
+*you opened amazon to buy one thing. you are about to check out with seven.*
 
-## What it does
+a curious little ai that lives in your browser and asks "what's the goal?" before you hit **add to cart** on amazon. not a blocker. not a guilt machine. a friend who happens to be good with money.
 
-- Intercepts **Add to Cart**, **Buy Now**, **1-Click**, **Subscribe & Save**, and Prime delivery-day buttons on `amazon.com` product pages.
-- Shows a warm overlay asking what you're trying to accomplish. Sends the product + your goal to a small AI; surfaces concerns only when they actually apply.
-- Does a **cart-level review** on `/cart` before Proceed to Checkout — flags cross-cart patterns, budget math, and items you added via 1-click with no goal on record.
-- Optional **48-hour hold** mode: pick "hold" instead of adding; the buddy pings you when it's time to decide. Most items don't survive the wait.
-- Tracks savings streak and running total locally in `chrome.storage.local`. Nothing leaves your machine except product titles + your stated goal (via a server-side AI proxy).
+built for adhd / impulsive brains that bounce off timers, friction walls, and budgeting apps. the dopamine of being understood turns out to be cheaper than the dopamine of buying.
 
-## Not BYOK
+## how it feels
 
-The AI works out of the box. Every request goes through a Cloudflare Worker (`proxy/`) that holds the provider key and rate-limits per install. You never configure an API key.
+- you click **add to cart**, **buy now**, **1-click**, **subscribe & save**, or a prime delivery-day button.
+- a warm overlay slides in. it asks what you're actually trying to accomplish.
+- you tell it. a small ai reads your goal alongside the product and only flags concerns that *actually apply*. if the purchase is good, it says so.
+- three buttons: **skip it**, **add anyway** (no friction, no guilt), or **hold for 48 hours**. most things don't survive the wait.
+- on the cart page, it does one last cross-cart review before you hit checkout — the place where ten small "fine" decisions become $335.
+- a quiet streak counter tracks what you didn't buy.
 
-## Architecture
+## status
 
-- **WXT + React + TypeScript**, Manifest V3.
-- Three content scripts per tab:
-  - `amazon-intercept.content` (MAIN world, `document_start`) — patches `fetch`/`XHR` on cart-add endpoints.
-  - `amazon.content` (ISOLATED, `document_idle`) — DOM-click interceptor and React overlay.
-  - `amazon-cart.content` — cart-review overlay on `/cart`.
-- Service worker (`entrypoints/background.ts`) brokers all AI calls, storage, holds, and reminder alarms.
-- Host access is requested at runtime from the post-install welcome page — no install-time permission prompts, no Chrome Web Store "in-depth review" banner.
+mvp. not on the chrome web store yet. amazon-only for now (it's where the bleed is). cart + product page interception working end-to-end. the [proxy](./proxy) is live at `manicspendingbuddy.codyh.xyz` so the ai works out of the box — no api key to configure, ever.
 
-## Develop
+if you want to try it early, clone and load it unpacked. see [contributors](#for-contributors) below.
+
+## why
+
+every existing tool in this space is built around friction: a 30-second timer, a blocker, a guilt prompt, a budget you have to manually update. friction is exactly the wrong primitive for an adhd brain — it adds cognitive load without adding value, and we route around it within a week.
+
+what *does* work: being heard. so the buddy's first move is always to listen. it asks why before it suggests anything. when it does suggest something, the suggestion has to actually serve the goal you stated — not generic "have you considered not buying things" energy.
+
+the bet: if not-buying is *more entertaining* than buying, the impulse loses on its own merits. no willpower required.
+
+a longer version of this thinking lives in [`PLAN.md`](./PLAN.md). the full surface map is in [`SURFACES.md`](./SURFACES.md).
+
+## for contributors
+
+stack: [wxt](https://wxt.dev) + react 19 + typescript, manifest v3. cloudflare worker proxy in [`proxy/`](./proxy) so installs don't need api keys.
 
 ```bash
 pnpm install
-pnpm dev        # loads in Chrome via WXT
+pnpm dev        # loads in chrome via wxt
 pnpm test       # vitest
 pnpm compile    # tsc --noEmit
-pnpm build      # builds and syncs .output/chrome-mv3 → chrome-extension/
+pnpm build      # outputs to chrome-extension/ (load unpacked)
 ```
 
-`chrome-extension/` is the unpacked directory you load via `chrome://extensions` → Load unpacked.
+three content scripts per amazon tab handle interception (one in the main world patches `fetch`/`xhr` on cart endpoints; one in the isolated world owns the overlay; one runs on `/cart` for the pre-checkout review). the service worker brokers all ai calls and holds. host access is requested at runtime from a welcome page, not at install — no scary chrome web store permission banner.
 
-## Proxy
-
-See `proxy/README.md` for the Cloudflare Worker. Production is deployed at `manicspendingbuddy.codyh.xyz`. Set `WXT_PROXY_URL` in `.env` to point builds at your own deployment.
-
-## Status
-
-MVP — not yet on the Chrome Web Store. See `PLAN.md` for roadmap and `docs/` for the full design trail.
+issues and prs welcome. tone matters here: warm, specific, irreverent. never preachy.
